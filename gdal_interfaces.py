@@ -5,6 +5,9 @@ from os import listdir
 from os.path import isfile, join, getsize
 import json
 from rtree import index
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Originally based on https://stackoverflow.com/questions/13439357/extract-point-from-raster-in-gdal
 class GDALInterface(object):
@@ -52,7 +55,7 @@ class GDALInterface(object):
         return b.ReadAsArray()
 
     def print_statistics(self):
-        print(self.src.GetRasterBand(1).GetStatistics(True, True))
+        logger.info(self.src.GetRasterBand(1).GetStatistics(True, True))
 
 
     def lookup(self, lat, lon):
@@ -73,8 +76,7 @@ class GDALInterface(object):
 
             return v if v != -32768 else self.SEA_LEVEL
         except Exception as e:
-            print(e)
-            return self.SEA_LEVEL
+            raise Exception(f'Exception raised during lookup: ${e}')
 
     def close(self):
         self.src = None
@@ -128,7 +130,7 @@ class GDALTileInterface(object):
         all_coords = []
         for file in self._all_files():
             full_path = join(self.tiles_folder,file)
-            print('Processing %s ... (%s MB)' % (full_path, getsize(full_path) / 2**20))
+            logger.info('Processing %s ... (%s MB)' % (full_path, getsize(full_path) / 2**20))
             i = self._open_gdal_interface(full_path)
             coords = i.get_corner_coords()
 
@@ -145,7 +147,7 @@ class GDALTileInterface(object):
                                 )
                 }
             ]
-            print('\tDone! LAT (%s,%s) | LNG (%s,%s)' % (lmin, lmax, lngmin, lngmax))
+            logger.info('\tDone! LAT (%s,%s) | LNG (%s,%s)' % (lmin, lmax, lngmin, lngmax))
 
         with open(self.summary_file, 'w') as f:
             json.dump(all_coords, f)
@@ -172,7 +174,7 @@ class GDALTileInterface(object):
             return int(gdal_interface.lookup(lat, lng))
 
     def _build_index(self):
-        print('Building spatial index ...')
+        logger.info('Building spatial index ...')
         index_id = 1
         for e in self.all_coords:
             e['index_id'] = index_id

@@ -1,10 +1,13 @@
 import configparser
 import json
 import os
+import logging
 
 from bottle import route, run, request, response, hook
 from gdal_interfaces import GDALTileInterface
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class InternalException(ValueError):
     """
@@ -12,7 +15,7 @@ class InternalException(ValueError):
     """
     pass
 
-print('Reading config file ...')
+logger.info('Reading config file ...')
 parser = configparser.ConfigParser()
 parser.read('config.ini')
 
@@ -34,10 +37,10 @@ Initialize a global interface. This can grow quite large, because it has a cache
 interface = GDALTileInterface(DATA_FOLDER, '%s/summary.json' % DATA_FOLDER, OPEN_INTERFACES_SIZE)
 
 if interface.has_summary_json() and not ALWAYS_REBUILD_SUMMARY:
-    print('Re-using existing summary JSON')
+    logger.info('Re-using existing summary JSON')
     interface.read_summary_json()
 else:
-    print('Creating summary JSON ...')
+    logger.info('Creating summary JSON ...')
     interface.create_summary_json()
 
 def get_elevation(lat, lng):
@@ -159,8 +162,8 @@ def post_lookup():
     return do_lookup(body_to_locations)
 
 if os.path.isfile(CERT_FILE) and os.path.isfile(KEY_FILE):
-    print('Using HTTPS')
+    logger.info('Using HTTPS')
     run(host=HOST, port=PORT, server='gunicorn', workers=NUM_WORKERS, certfile=CERT_FILE, keyfile=KEY_FILE)
 else:
-    print('Using HTTP')
+    logger.info('Using HTTP')
     run(host=HOST, port=PORT, server='gunicorn', workers=NUM_WORKERS)
